@@ -1,0 +1,115 @@
+site_name: C语言教程
+site_description: 完整的C语言学习教程，从基础到进阶
+site_author: Your Name
+site_url: https://example.com
+
+# Repository
+repo_name: c-tutorial
+repo_url: https://github.com/yourusername/c-tutorial
+
+# Theme
+theme:
+  name: material
+  language: zh
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: 切换到深色模式
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: 切换到浅色模式
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+# Plugins
+plugins:
+  - search:
+      lang: zh
+
+# Markdown extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+      title: 目录
+  - tables
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Page tree
+nav:
+  - 首页: index.md
+  - 基础语法:
+    - 基础语法/index.md
+    - 第一个程序: 基础语法/第一个程序.md
+    - 变量与数据类型: 基础语法/变量与数据类型.md
+    - 运算符: 基础语法/运算符.md
+    - 输入输出: 基础语法/输入输出.md
+    - 控制流程: 基础语法/控制流程.md
+    - 快速开始: 基础语法/快速开始.md
+  - 进阶特性:
+    - 进阶特性/index.md
+
+# Copyright
+copyright: |
+  &copy; 2024 Your Name -
+  <a href="#__consent">更改Cookie设置</a>
