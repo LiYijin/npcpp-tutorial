@@ -1,11 +1,11 @@
-site_name: C语言教程
-site_description: 完整的C语言学习教程，从基础到进阶
+site_name: NPC++语言教程
+site_description: 完整的NPC++语言学习教程，从基础到进阶
 site_author: Your Name
 site_url: https://example.com
 
 # Repository
-repo_name: c-tutorial
-repo_url: https://github.com/yourusername/c-tutorial
+repo_name: npcpp-tutorial
+repo_url: https://github.com/LiYijin/npcpp-tutorial
 
 # Theme
 theme:
@@ -98,16 +98,25 @@ markdown_extensions:
 # Page tree
 nav:
   - 首页: index.md
-  - 基础语法:
-    - 基础语法/index.md
-    - 第一个程序: 基础语法/第一个程序.md
-    - 变量与数据类型: 基础语法/变量与数据类型.md
-    - 运算符: 基础语法/运算符.md
-    - 输入输出: 基础语法/输入输出.md
-    - 控制流程: 基础语法/控制流程.md
-    - 快速开始: 基础语法/快速开始.md
-  - 进阶特性:
-    - 进阶特性/index.md
+  - 第一章: chapter1.md
+  - 第二章: chapter2.md
+  - 第三章: chapter3.md
+  - 第四章: chapter4.md
+  - 第五章: chapter5.md
+  - 第六章: chapter6.md
+  - 第七章: chapter7.md
+  - 附录1: appendix1.md
+  - 附录2: appendix2.md
+  # - 基础语法:
+  #   - 基础语法/index.md
+  #   - 第一个程序: 基础语法/第一个程序.md
+  #   - 变量与数据类型: 基础语法/变量与数据类型.md
+  #   - 运算符: 基础语法/运算符.md
+  #   - 输入输出: 基础语法/输入输出.md
+  #   - 控制流程: 基础语法/控制流程.md
+  #   - 快速开始: 基础语法/快速开始.md
+  # - 进阶特性:
+  #   - 进阶特性/index.md
 
 # Copyright
 copyright: |
