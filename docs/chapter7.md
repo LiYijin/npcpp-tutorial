@@ -64,6 +64,10 @@ struct RELI_HDR_S {
 
 分析项目需求，确定功能和设计目标。
 
+NPC++的处理流程图如下：
+
+![image1_chapter7.png](image1_chapter7.png)
+
 通过“解析-校验-按流存状态-反馈控制-动态选路”闭环来实现可靠连接：
 
 1. 在解析器里提取 Ethernet/IPv4/UDP 及自定义 RELI_HDR
@@ -89,6 +93,10 @@ Parser + 多层协议栈 + 自定义协议头
 
 设计系统架构，规划模块和数据流程。
 
+数据流程图如下：
+
+![image2_chapter7.png](image2_chapter7.png)
+
 数据处理流程及相关模块代码如下
 
 模块1：首先是声明头部和相关的metadata state
@@ -100,6 +108,10 @@ Parser + 多层协议栈 + 自定义协议头
 模块4：确定相关表项匹配后的操作Actions，包括可靠头校验，生成NACK控制包（数据面构造 + 发送），per-flow 更新
 
 模块5：组装模块3和4的功能，形成ControlFlow
+
+部分数据结构的相互关联图：
+
+![image3_chapter7.png](image3_chapter7.png)
 
 ### **7.3 功能实现与测试**
 
