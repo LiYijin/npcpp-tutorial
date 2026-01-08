@@ -1,16 +1,215 @@
-# 第2章：数据包处理实例（hello world 现在例子更复杂）
+# 第2章：数据包处理实例
 
 ![image_chapter2.png](image_chapter2.png)
 
 上图为完整的数据报文处理流程图。报文从左侧进入交换机硬件 。接着被解析成多个头部字段，包括以太网，ipv4等。通过元数据metadata获取报文头部所携带的信息，接着进入到线程thread内处理报文，处理过程为将元数据和头部字段通过多个block（包括table+function以及control函数），处理完成后重新组合字段构建数据包发送，元数据被丢弃。
 
-最下方的target runtime和hardware为硬件资源，即上面的数据报文处理程序是数据面的体现。下面是控制面和硬件资源。
+在深入了解语法细节之前，我们先通过一个经典的“数据包镜像”实例，来完整体验一次 NPC++ 的开发流程。本章将采用**代码拆解**的方式，一步步剖析如何在数据平面实现从报文接收、解析、查表到转发的完整逻辑。
 
-在深入了解语法细节之前，我们先通过一个经典的“三层转发”实例，来完整体验一次 NPC++ 的开发流程。本章将采用**代码拆解**的方式，一步步剖析如何在数据平面实现从报文接收、解析、查表到转发的完整逻辑。
+## 2.1 简单实例：NPC++镜像功能实现详解
 
-做流统计  流分类  或者仅仅只是把端口的报文做个镜像  发到另一个机器上做一些解析 或者流分析。
+### 2.1.1 功能概述
 
-### **2.1 核心实例：构建基础三层转发器 (npc_test)**
+本教程讲解如何使用NPC++语言实现**网络报文镜像（Mirroring）**功能。镜像功能常用于：
+- 流量监控与分析
+- 安全审计
+- 故障排查
+- 网络性能监控
+
+**总体思路**：将接收到的原始报文复制一份，修改副本报文的目标地址，从指定端口发送出去，实现”一收多发”的效果。
+
+### 2.1.2 代码结构解析
+
+#### 数据结构定义（Header Definition）
+
+```cpp
+typedef uint<48> MAC_ADDR_T;
+typedef uint<32> IPV4_ADDR_T;
+#define ETHERTYPE_IPV4 0x0800
+
+struct ETHER_HDR_S {
+    MAC_ADDR_T DstMac;
+    MAC_ADDR_T SrcMac;
+    uint<16> EtherType;
+};
+
+struct IPV4_HDR_S {
+    uint<4>  Version;
+    uint<4>  Ihl;
+    uint<8>  Tos;
+    uint<16> TotalLen;
+    uint<16> Id;
+    uint<1>  FlagR;
+    uint<1>  FlagDF;
+    uint<1>  FlagMF;
+    uint<13> FrgOffset;
+    uint<8>  Ttl;
+    uint<8>  Protocal;
+    uint<16> Checksum;
+    IPV4_ADDR_T Sip;
+    IPV4_ADDR_T Dip;
+};
+NPCHeader <ETHER_HDR_S>  ethHdr;
+NPCHeader <IPV4_HDR_S>   ipv4Hdr;
+```
+
+**要点说明**：
+1. `uint<N>`表示N位的无符号整数，如`uint<48>`对应6字节MAC地址
+2. 使用`struct`定义报文头部结构，与协议格式一一对应
+3. `NPCHeader<>`将结构体实例化为可操作的报文头部对象
+
+#### 线性表定义（Linear Table）
+
+```cpp
+// 定义线性表返回的数据结构
+#define TBL_SIZE_8BIT 1<<8  //表大小
+struct MIRROR_CFG_S {
+    uint<8>  MirrorPort; // 镜像出接口
+    uint<32> DestIp;     // 镜像报文修改后的目的IP
+    uint<48> DestMac;   // 镜像报文修改后的目的MAC
+};
+
+table MIRROR_LITBL() {
+    key = {
+        // 使用报文源MAC的低8位作为线性表索引
+        ethHdr.SrcMac[7:0]: index;
+    }
+    STATUS_T     _status();
+    MIRROR_CFG_S _lookup();
+
+    actions = {
+        _lookup: MirrorReadProc(); // 绑定查找后的处理函数
+    }
+    size = TBL_SIZE_8BIT;
+}
+```
+
+**核心概念**：
+1. **线性表（Linear Table）**：通过索引直接访问的表结构，查找时间复杂度O(1)
+2. **键（Key）**：使用源MAC地址的低8位作为索引值（共256个表项）
+3. **动作（Actions）**：查表成功后执行的处理函数
+4. **表项结构**：每个表项包含镜像端口、目的IP、目的MAC三个字段
+
+#### 镜像处理函数（Mirror Processing）
+
+```cpp
+struct NPC_INTRINSIC_OUTPUT_METADATA_S {
+    uint<9>  OutSubChan;  // 报文在芯片上的出口接口 ID（非面板端口号）
+    uint<16> Sqid;        // 用户队列 ID
+    uint<1>  DropFlag;    // 丢包标志
+    uint<4>  Qindex;      // 队列优先级（决定调度队列）
+    uint<2>  Color;       // 报文丢弃优先级（队列满时红色报文优先丢弃）
+};
+NPC_INTRINSIC_OUTPUT_METADATA_S outputs; //声明输出元数据
+void MirrorReadProc(STATUS_T sta, MIRROR_CFG_S rsp) {
+    if (sta == 0) { // 查表成功（HIT状态）
+        // --- A. 配置原始报文 ---
+        outputs.OutSubChan = 0;
+
+        // --- B. 复制报文 ---
+        npc_pkt_replicate();
+
+        // --- C. 配置副本（镜像）报文 ---
+        outputs.OutSubChan = rsp.MirrorPort;
+        ipv4Hdr.Dip = rsp.DestIp;
+        ethHdr.DstMac = rsp.DestMac;
+
+        // 发送副本报文
+        npc_pkt_send();
+        npc_exit();
+    }
+}
+MIRROR_LITBL mirr; //声明一个全局的mirror表
+```
+
+**关键技术点**：
+
+1. **报文复制**：
+    
+    ```cpp
+    npc_pkt_replicate();
+    ```
+    
+    - 复制当前报文，生成副本
+    - 复制前的操作作用于原始报文
+    - 复制后当前线程继续处理副本报文
+2. **通道控制**：
+    
+    ```cpp
+    npc_intrinsic_metadata.OutSubChan = rsp.MirrorPort;
+    ```
+    
+    - 控制报文从哪个物理端口发送
+    - 原始报文发往端口0，副本发往镜像端口
+3. **报文修改**：
+    
+    ```cpp
+    ipv4Hdr.Dip = rsp.DestIp;
+    ethHdr.DstMac = rsp.DestMac;
+    ```
+    
+    - 修改副本报文的目的地址
+    - 原始报文保持原样转发
+
+#### 解析器与控制流
+
+```cpp
+// 4. 解析器 (Parser)
+@parser void ParseEthernet() {
+    _extract(ethHdr);
+    if (ethHdr.EtherType == 0x0800) {
+        _extract(ipv4Hdr);
+    }
+    return accept;
+}
+
+// 5. 控制流 (Control Flow)
+@control void ControlFlow() {
+    // 执行线性表查找
+    MIRROR_LITBL._lookup();
+
+    // 原始报文默认后续处理
+    npc_pkt_add_sys_hdr();
+    npc_pkt_deparser();
+    npc_pkt_send();
+    npc_exit();
+}
+
+NPCProgram(ParseEthernet(), ControlFlow()) main;
+```
+
+**处理流程**：
+1. **解析阶段**：提取以太网头和IPv4头
+2. **查表阶段**：根据源MAC查镜像配置表
+3. **镜像处理**：如果命中表项，复制并修改报文
+4. **转发阶段**：原始报文和镜像报文分别发送
+
+### 2.1.3 关键API详解
+
+#### 报文操作API
+
+```cpp
+// 复制报文，生成副本
+npc_pkt_replicate();
+
+// 发送当前处理的报文
+npc_pkt_send();
+
+// 添加系统头部
+npc_pkt_add_sys_hdr();
+
+// 反解析，将头部组装回报文
+npc_pkt_deparser();
+```
+
+#### 元数据操作
+
+```cpp
+// 设置报文出端口
+npc_intrinsic_metadata.OutSubChan = port_num;
+```
+
+## **2.2 复杂实例：构建基础三层转发器**
 
 **场景假设**：
 
@@ -217,7 +416,7 @@ EPAT_TBL epat; //这个是声明的table
 NPCProgram(ParseEthernet(), ControlFlow()) main;
 ```
 
-## 2.2 编译与工具链
+## 2.3 编译与工具链
 
 完成代码编写后，我们需要使用华为提供的编译器 icomp 将 NPC++ 源码编译为硬件可执行的二进制文件。
 
@@ -238,6 +437,6 @@ chmod 777 icomp
 ./icomp npc_test.npc
 ```
 
-## 2.3 测试环境搭建
+## 2.4 测试环境搭建
 
 （此处预留测试代码位置，通常涉及使用发包工具如 Scapy 或 TCPreplay 向模拟端口发送数据包，并验证出端口捕获的报文 MAC 地址是否已被正确修改。）

@@ -27,7 +27,7 @@ TODO（）：这个图需要换成中文的
 
 ## **4.1 parser模块：提取协议头**
 
-parser描述了具有一个数据报文从刚进入交换机入口状态到一个最终accept 状态的有限状态机。入口状态通过NPCProgram第一个参数指定，最终状态固定命名为accept，并链接到匹配动作入口点（表示解析成功）。入口状态是parser的一部分，而accept状态在逻辑上是parser的出口。
+parser描述了一个数据报文从刚进入交换机入口状态到一个最终accept 状态的有限状态机。入口状态通过NPCProgram第一个参数指定，最终状态固定命名为accept，并链接到匹配动作入口点（表示解析成功）。入口状态是parser的一部分，而accept状态在逻辑上是parser的出口。
 
 parser生成Match-Action（table- function）阶段操作的协议头，这个过程被称为报文解析。它是报文有效的协议头实例的集合。parser生成初始的协议头描述信息，table-function可以通过修改协议头实例的值和标记，从而达到更新报文的目的。
 
@@ -222,7 +222,7 @@ table IPAT_T()
         controlFlowMd.InChannel : index;  //冒号前面是数据包对应的字段，后面是匹配的类型
                                //即如果InChannel按Index匹配成功了Table里的Key，则执行后面的action
     }
-    // 声明内置函数（详见板块 2）
+    // 声明内置函数（详见4.2.2）
     IPAT_RSP_S  _lookup();
     // 2. actions 属性：将 _lookup 操作绑定到 IpatFunction
     actions = {
@@ -237,7 +237,7 @@ void IpatFunction(IPAT_RSP_S rsp) { ... }
 
 ### **4.2.2 内置函数**
 
-内置函数是编译器预定义的、用于抽象 Table 硬件操作的方法，它们在 table 结构内部声明，以定义该表支持的操作。相关内置函数的定义，基于英文的直译名称，请查看附录。
+内置函数是编译器预定义的、用于抽象 Table 硬件操作的方法，它们在 table 结构内部声明，以定义该表支持的操作。内置函数属于接口函数，可以直接按如下方式调用，其中涉及到的结构体（类似RSP_S）均可以通过自定义的方式声明。
 
 - **_lookup()**: 查找操作。隐式使用 key属性作为输入，返回查表结果（RSP_S）。
 - **_insert(RSP_S response)**: 插入操作（仅限 exact表）。隐式使用 key，response是要插入的内容。

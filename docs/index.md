@@ -19,3 +19,5 @@
 [**附录1：性能优化与调试**](appendix1.md)
 
 [**附录2：常用函数参考**](appendix2.md)
+
+[**P4和NPC**](appendix3.md)
